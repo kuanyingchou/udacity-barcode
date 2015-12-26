@@ -91,57 +91,10 @@ public class BookService extends IntentService {
 
         bookEntry.close();
 
-        HttpURLConnection urlConnection = null;
-        BufferedReader reader = null;
-        String bookJsonString = null;
-
-        try {
-            final String FORECAST_BASE_URL = "https://www.googleapis.com/books/v1/volumes?";
-            final String QUERY_PARAM = "q";
-
-            final String ISBN_PARAM = "isbn:" + ean;
-
-            Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
-                    .appendQueryParameter(QUERY_PARAM, ISBN_PARAM)
-                    .build();
-
-            URL url = new URL(builtUri.toString());
-
-            urlConnection = (HttpURLConnection) url.openConnection();
-            urlConnection.setRequestMethod("GET");
-            urlConnection.connect();
-
-            InputStream inputStream = urlConnection.getInputStream();
-            StringBuffer buffer = new StringBuffer();
-            if (inputStream == null) {
-                return;
-            }
-
-            reader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                buffer.append(line);
-                buffer.append("\n");
-            }
-
-            if (buffer.length() == 0) {
-                return;
-            }
-            bookJsonString = buffer.toString();
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "Error ", e);
-        } finally {
-            if (urlConnection != null) {
-                urlConnection.disconnect();
-            }
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (final IOException e) {
-                    Log.e(LOG_TAG, "Error closing stream", e);
-                }
-            }
-
+        String bookJsonString = requestBook(ean);
+        if(bookJsonString == null) {
+            Log.e(LOG_TAG, "Got empty json");
+            return;
         }
 
         final String ITEMS = "items";
@@ -199,6 +152,62 @@ public class BookService extends IntentService {
         } catch (JSONException e) {
             Log.e(LOG_TAG, "Error ", e);
         }
+    }
+
+    private String requestBook(String ean) {
+        HttpURLConnection urlConnection = null;
+        BufferedReader reader = null;
+        String bookJsonString = null;
+
+        try {
+            final String FORECAST_BASE_URL = "https://www.googleapis.com/books/v1/volumes?";
+            final String QUERY_PARAM = "q";
+
+            final String ISBN_PARAM = "isbn:" + ean;
+
+            Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
+                    .appendQueryParameter(QUERY_PARAM, ISBN_PARAM)
+                    .build();
+
+            URL url = new URL(builtUri.toString());
+
+            urlConnection = (HttpURLConnection) url.openConnection();
+            urlConnection.setRequestMethod("GET");
+            urlConnection.connect();
+
+            InputStream inputStream = urlConnection.getInputStream();
+            StringBuffer buffer = new StringBuffer();
+            if (inputStream != null) {
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line);
+                    buffer.append("\n");
+                }
+
+                if (buffer.length() > 0) {
+                    bookJsonString = buffer.toString();
+                }
+            }
+
+
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Error ", e);
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (final IOException e) {
+                    Log.e(LOG_TAG, "Error closing stream", e);
+                }
+            }
+
+        }
+
+        return bookJsonString;
     }
 
     private void writeBackBook(String ean, String title, String subtitle, String desc, String imgUrl) {
